@@ -8,7 +8,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func hasBearerToken(reqObj jwt.JSONWebToken) {
+func hasBearerToken(reqObj jwt.JSONWebToken) error {
 	var headerName string = "Authorization"
 	var tokenPrefix string = "bearer"
 	var err error
@@ -23,9 +23,9 @@ func hasBearerToken(reqObj jwt.JSONWebToken) {
 			"error":             "unauthorised_access",
 			"error_description": "Missing Authorisation Header",
 		}
-		err = err.AxiomsError(err, 401)
+		return err.AxiomsError(errObj, 401)
 	}
-
+	return nil
 }
 
 func hasValidToken(token jwt.JSONWebToken) {
@@ -40,31 +40,31 @@ func getPayloadFromToken(jwt.JSONWebToken) {
 
 }
 
-func checkScopes(providedScopes string, requiredScopes []string) {
+func checkScopes(providedScopes string, requiredScopes []string) bool {
 	if len(requiredScopes) == 0 {
 		return true
 	}
 	var tmp []string = strings.Split(providedScopes, " ")
-	var tokenScopes = set.New(set.Threadsafe)
+	var tokenScopes = set.New(set.ThreadSafe)
 	for i, s := range tmp {
 		tokenScopes.Add(s)
 	}
-	scopes := set.New(set.Threadsafe)
+	scopes := set.New(set.ThreadSafe)
 	for i, s := range requiredScopes {
 		scopes.Add(s)
 	}
 	return set.Intersection(tokenScopes, scopes).Size() > 0
 }
 
-func checkRoles(tokenRoles []string, viewRoles []string) {
+func checkRoles(tokenRoles []string, viewRoles []string) bool {
 	if len(viewRoles) == 0 {
 		return true
 	}
-	token := set.New(set.Threadsafe)
+	token := set.New(set.ThreadSafe)
 	for i, s := range tokenRoles {
 		token.Add(s)
 	}
-	views := set.New(set.Threadsafe)
+	views := set.New(set.ThreadSafe)
 	for i, s := range viewRoles {
 		views.Add(s)
 	}
