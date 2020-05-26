@@ -1,42 +1,40 @@
 package tokens
 
 import (
+	err "go-axioms/errors"
 	"strings"
 	"time"
 
+	jose "github.com/dvsekhvalnov/jose2go"
 	"github.com/fatih/set"
-	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func hasBearerToken(reqObj jwt.JSONWebToken) (string, error) {
+func hasBearerToken(headers map[string]interface{}) (string, error) {
 	var headerName string = "Authorization"
 	var tokenPrefix string = "bearer"
-	var err error
-	var authHeader jose.Header
-	for i, s := range reqObj.Headers {
-		if s.KeyID == headerName {
-			authHeader = s
-		}
-	}
-	if authHeader.KeyID != headerName {
+	var authHeader interface{}
+	if headers[headerName] != nil {
+		authHeader = headers[headerName]
+	} else {
 		var errObj = map[string]string{
-			"error":             "unauthorised_access",
+			"error":             "unauthorized_access",
 			"error_description": "Missing Authorisation Header",
 		}
-		return "", err.AxiomsError(errObj, 401)
+		return "", err.AxiomsError(errObj, "401")
 	}
-	split := strings.Split(authHeader.KeyID, " ")
+	// NOTE: What is part of the interface that makes the value of the header?
+	split := strings.Split(authHeader, " ")
 	bearer, token := split[0], split[1]
 
 	if strings.ToLower(bearer) == tokenPrefix && token != "" {
 		return token, nil
 	} else {
 		var errObj = map[string]string{
-			"error":             "unauthorised_access",
+			"error":             "unauthorized_access",
 			"error_description": "Invalid Authorisation Bearer",
 		}
-		return "", err.AxiomsError(errObj, 401)
+		return "", err.AxiomsError(errObj, "401")
 	}
 
 	return "", nil
@@ -46,17 +44,21 @@ func hasValidToken(token jwt.JSONWebToken) {
 
 }
 
-func checkTokenValidity(token jwt.JSONWebToken, key string) {
-	payload := getPayloadFromToken(token, key)
+func checkTokenValidity(token string, key interface{}) string {
+	payload, err := getPayloadFromToken(token, key)
 	now := time.Now().Unix()
-	if payload != nil && now <= payload.exp {
+	if payload == "" && now <= payload.exp {
 		return payload
 	}
-	return nil
+	return ""
 }
 
-func getPayloadFromToken(token jwt.JSONWebToken, key string) {
-	return 1
+func getPayloadFromToken(token string, key interface{}) (string, error) {
+	payload, headers, err := jose.Decode(token, key)
+	if err != nil {
+		return "", err
+	}
+	return payload, nil
 }
 
 func checkScopes(providedScopes string, requiredScopes []string) bool {
@@ -83,11 +85,11 @@ func checkRoles(tokenRoles []string, viewRoles []string) bool {
 	for i, s := range tokenRoles {
 		token.Add(s)
 	}
-	views := set.New(set.ThreadSafe)
+	view := set.New(set.ThreadSafe)
 	for i, s := range viewRoles {
-		views.Add(s)
+		view.Add(s)
 	}
-	return set.Intersection(token, views).Size() > 0
+	return set.Intersection(token, view).Size() > 0
 }
 
 func checkPermissions(tokenPermissions []string, viewPermissions []string) bool {
@@ -98,11 +100,11 @@ func checkPermissions(tokenPermissions []string, viewPermissions []string) bool 
 	for i, s := range tokenPermissions {
 		token.Add(s)
 	}
-	views := set.New(set.ThreadSafe)
+	view := set.New(set.ThreadSafe)
 	for i, s := range viewPermissions {
-		views.Add(s)
+		view.Add(s)
 	}
-	return set.Intersection(token, views).Size() > 0
+	return set.Intersection(token, view).Size() > 0
 }
 
 func getKeyFromJWKSjson() {
