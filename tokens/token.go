@@ -10,10 +10,12 @@ import (
 	
 	// SDK Imports
 	axerr "go-axioms/errors"
+	"go-axioms/conf"
 
 	// Package Imports
 	"github.com/fatih/set"
 	jose "gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2/jwt"
 	"github.com/eko/gocache/store"
 )
 
@@ -52,27 +54,41 @@ func hasBearerToken(headers map[string]interface{}) (string, error) {
 				"401"
 			)
 	}
-
 	return "", nil
 }
 
-func hasValidToken(token jwt.JSONWebToken) {
-
+func hasValidToken(token jwt.JSONWebToken) (bool, error) {
+	claims := make(map[string]interface{})
+	err := jwt.UnsafeClaimsWithoutVerification(&claims)
+	key, err := getKeyFromJWKSjson(conf.App.Domain, claims["kid"])
+	payload, valid := checkTokenValidity(token, key)
+	if valid && payload.Audience.Contains(conf.App.Audience) {
+		return (true, nil)
+	}
+	return (false, axerr.AxiomsError(
+		"unauthorized_access",
+		"Invalid Access Token",
+		"401"
+	))
 }
 
-func checkTokenValidity(token string, key interface{}) string {
+func checkTokenValidity(token string, key jose.JSONWebKey) (jwt.Claims, bool) {
 	payload, err := getPayloadFromToken(token, key)
 	now := time.Now().Unix()
-	if payload == "" && now <= payload.exp {
-		return payload
+	if payload == "" && now <= payload.Expiry {
+		return (payload, true)
 	}
-	return ""
+	return (payload, false)
 }
 
-func getPayloadFromToken(token string, key interface{}) (string, error) {
-	payload, headers, err := jose.Decode(token, key)
+func getPayloadFromToken(token string, key jose.JSONWebKey) (jwt.Claims, error) {
+	tok, err := jwt.ParseSigned(token)
 	if err != nil {
 		return "", err
+	}
+	payload := jwt.Claims{}
+	if err := tok.Claims(key, &payload); err != nil {
+		panic(err)
 	}
 	return payload, nil
 }
