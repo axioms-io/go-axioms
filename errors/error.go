@@ -1,7 +1,7 @@
 package errors
 
 // AxiomsError is a custom error
-func AxiomsError(err string, description string, code string) error {
+func AxiomsError(err string, description string, code int) error {
 	var errObj = map[string]string{
 		"error":             err,
 		"error_description": description,
@@ -11,9 +11,9 @@ func AxiomsError(err string, description string, code string) error {
 
 type errorString struct {
 	name map[string]string
-	code string
+	code int
 }
 
 func (e *errorString) Error() string {
-	return e.code
+	return e.name["error"]
 }
