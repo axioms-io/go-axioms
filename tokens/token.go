@@ -27,34 +27,36 @@ memcacheStore := store.NewMemcache(
 )
 cacheManager := cache.New(memcacheStore)
 
-func hasBearerToken(headers map[string]interface{}) (string, error) {
+func hasBearerToken(reqObj jwt.JSONWebToken) (string, error) {
 	var headerName string = "Authorization"
 	var tokenPrefix string = "bearer"
-	var authHeader interface{}
-	if headers[headerName] != nil {
-		authHeader = headers[headerName]
-	} else {
-		return "", axerr.AxiomsError(
+	var authHeader jose.Header{}
+	var found bool = false
+	for header := range reqObj.headers {
+		if header.KeyID == headerName {
+			&authHeader = header
+			found = true
+		}
+	}
+	if !found {
+		return ("", axerr.AxiomsError(
 			"unauthorized_access",
 			"Missing Authorisation Header",
 			401
-		)
+		))
 	}
-	// NOTE: What is part of the interface that makes the value of the header?
+	// What is the structure of the header?
 	split := strings.Split(authHeader, " ")
 	bearer, token := split[0], split[1]
 
 	if strings.ToLower(bearer) == tokenPrefix && token != "" {
 		return token, nil
-	} else {
-		var errObj = map[string]string{
-			return "", axerr.AxiomsError(
-				"unauthorized_access",
-				"Invalid Authorisation Bearer", 
-				401
-			)
 	}
-	return "", nil
+	return ("", axerr.AxiomsError(
+		"unauthorized_access",
+		"Invalid Authorisation Bearer", 
+		401
+	))
 }
 
 func hasValidToken(token jwt.JSONWebToken) (bool, error) {
