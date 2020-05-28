@@ -1,16 +1,19 @@
 package tokens
 
 import (
-	err "go-axioms/errors"
+	// Standard Imports
 	"strings"
 	"time"
 	"net/http"
 	"encoding/json"
 	"io/ioutil"
+	
+	// SDK Imports
+	axerr "go-axioms/errors"
 
-	jose "github.com/dvsekhvalnov/jose2go"
+	// Package Imports
 	"github.com/fatih/set"
-	gojose"gopkg.in/square/go-jose.v2"
+	jose "gopkg.in/square/go-jose.v2"
 	"github.com/eko/gocache/store"
 )
 
@@ -29,7 +32,7 @@ func hasBearerToken(headers map[string]interface{}) (string, error) {
 	if headers[headerName] != nil {
 		authHeader = headers[headerName]
 	} else {
-		return "", err.AxiomsError(
+		return "", axerr.AxiomsError(
 			"unauthorized_access",
 			"Missing Authorisation Header", 
 			"401"
@@ -43,7 +46,7 @@ func hasBearerToken(headers map[string]interface{}) (string, error) {
 		return token, nil
 	} else {
 		var errObj = map[string]string{
-			return "", err.AxiomsError(
+			return "", axerr.AxiomsError(
 				"unauthorized_access",
 				"Invalid Authorisation Bearer", 
 				"401"
@@ -120,20 +123,20 @@ func checkPermissions(tokenPermissions []string, viewPermissions []string) bool 
 	return set.Intersection(token, view).Size() > 0
 }
 
-func getKeyFromJWKSjson(tenant string, kid string) {
+func getKeyFromJWKSjson(tenant string, kid string) (jose.JSONWebKeySet, err) {
 	data = cacheFetch("https://" + tenant + "/oauth2/.well-known/jwks.json", 600)
 	key = &jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{},
 	}
 	err := json.Unmarshal([]byte(data), key)
 	if err != nil {
-		return err.AxiomsError(
+		return key, axerr.AxiomsError(
 			"unathorized_access",
 			"Invalid Access Token",
 			"401"
 		)
 	}
-	return key
+	return key, nil
 }
 
 func cacheFetch(url string, timeOfLife int) {
