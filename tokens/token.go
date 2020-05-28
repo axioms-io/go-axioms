@@ -4,11 +4,23 @@ import (
 	err "go-axioms/errors"
 	"strings"
 	"time"
+	"net/http"
+	"encoding/json"
+	"io/ioutil"
 
 	jose "github.com/dvsekhvalnov/jose2go"
 	"github.com/fatih/set"
-	"gopkg.in/square/go-jose.v2/jwt"
+	gojose"gopkg.in/square/go-jose.v2"
+	"github.com/eko/gocache/store"
 )
+
+memcacheStore := store.NewMemcache(
+	memcache.New("localhost"),
+	&store.Options{
+		Expiration: 300 * time.Second
+	}
+)
+cacheManager := cache.New(memcacheStore)
 
 func hasBearerToken(headers map[string]interface{}) (string, error) {
 	var headerName string = "Authorization"
@@ -17,11 +29,11 @@ func hasBearerToken(headers map[string]interface{}) (string, error) {
 	if headers[headerName] != nil {
 		authHeader = headers[headerName]
 	} else {
-		var errObj = map[string]string{
-			"error":             "unauthorized_access",
-			"error_description": "Missing Authorisation Header",
-		}
-		return "", err.AxiomsError(errObj, "401")
+		return "", err.AxiomsError(
+			"unauthorized_access",
+			"Missing Authorisation Header", 
+			"401"
+		)
 	}
 	// NOTE: What is part of the interface that makes the value of the header?
 	split := strings.Split(authHeader, " ")
@@ -31,10 +43,11 @@ func hasBearerToken(headers map[string]interface{}) (string, error) {
 		return token, nil
 	} else {
 		var errObj = map[string]string{
-			"error":             "unauthorized_access",
-			"error_description": "Invalid Authorisation Bearer",
-		}
-		return "", err.AxiomsError(errObj, "401")
+			return "", err.AxiomsError(
+				"unauthorized_access",
+				"Invalid Authorisation Bearer", 
+				"401"
+			)
 	}
 
 	return "", nil
@@ -107,6 +120,30 @@ func checkPermissions(tokenPermissions []string, viewPermissions []string) bool 
 	return set.Intersection(token, view).Size() > 0
 }
 
-func getKeyFromJWKSjson() {
+func getKeyFromJWKSjson(tenant string, kid string) {
+	data = cacheFetch("https://" + tenant + "/oauth2/.well-known/jwks.json", 600)
+	key = &jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{},
+	}
+	err := json.Unmarshal([]byte(data), key)
+	if err != nil {
+		return err.AxiomsError(
+			"unathorized_access",
+			"Invalid Access Token",
+			"401"
+		)
+	}
+	return key
+}
 
+func cacheFetch(url string, timeOfLife int) {
+	cached, err = cacheManager.Get("jwks" + url)
+	if err != nil {
+		return cached
+	}
+	response, err := http.Get(url)
+	data, err := ioutil.ReadAll(response.Body)
+	defer response.Body.Close()
+	err := cacheManager.Set("jwks" + url, data, &cache.Options{Expiration: timeOfLife*time.Second})
+	return data
 }
