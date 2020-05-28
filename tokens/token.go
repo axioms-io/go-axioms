@@ -36,8 +36,8 @@ func hasBearerToken(headers map[string]interface{}) (string, error) {
 	} else {
 		return "", axerr.AxiomsError(
 			"unauthorized_access",
-			"Missing Authorisation Header", 
-			"401"
+			"Missing Authorisation Header",
+			401
 		)
 	}
 	// NOTE: What is part of the interface that makes the value of the header?
@@ -51,7 +51,7 @@ func hasBearerToken(headers map[string]interface{}) (string, error) {
 			return "", axerr.AxiomsError(
 				"unauthorized_access",
 				"Invalid Authorisation Bearer", 
-				"401"
+				401
 			)
 	}
 	return "", nil
@@ -68,7 +68,7 @@ func hasValidToken(token jwt.JSONWebToken) (bool, error) {
 	return (false, axerr.AxiomsError(
 		"unauthorized_access",
 		"Invalid Access Token",
-		"401"
+		401
 	))
 }
 
@@ -149,7 +149,7 @@ func getKeyFromJWKSjson(tenant string, kid string) (jose.JSONWebKeySet, err) {
 		return key, axerr.AxiomsError(
 			"unathorized_access",
 			"Invalid Access Token",
-			"401"
+			401
 		)
 	}
 	return key, nil
