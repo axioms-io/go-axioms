@@ -23,22 +23,15 @@ memcacheStore := store.NewMemcache(
 	memcache.New("localhost"),
 	&store.Options{
 		Expiration: 300 * time.Second
-	}
+	},
 )
 cacheManager := cache.New(memcacheStore)
 
-func hasBearerToken(reqObj jwt.JSONWebToken) (string, error) {
+func hasBearerToken(reqObj http.Request) (string, error) {
 	var headerName string = "Authorization"
 	var tokenPrefix string = "bearer"
-	var authHeader jose.Header{}
-	var found bool = false
-	for header := range reqObj.headers {
-		if header.KeyID == headerName {
-			&authHeader = header
-			found = true
-		}
-	}
-	if !found {
+	authHeader := reqObj.Header.Get(headerName)
+	if authHeader == "" {
 		return ("", axerr.AxiomsError(
 			"unauthorized_access",
 			"Missing Authorisation Header",
