@@ -1,51 +1,55 @@
 package filters
 
-func has_required_scopes(viewRoles []string) {
+import (
+	token "go-axioms/tokens"
+)
+
+func hasRequiredScopes(viewRoles []string) {
 	payload := getattr(request, "auth_jwt", None)
 	if payload == nil {
-		errObj := map[string]string{
-			"error":             "unauthorized_access",
-			"error_description": "Invalid Authorisation Token",
-		}
-		return "", err.AxiomsError(errObj, 401)
+		return "", err.AxiomsError(
+			"unauthorized_access",
+			"Invalid Authorisation Token", 
+			401,
+		)
 	}
-	if checkScopes(payload.scope, required_scopes[0]) {
+	if token.checkScopes(payload.scope, required_scopes[0]) {
 		return fn(*args, **kwargs)
 	}
-	errObj := map[string]string{
-		"error":             "insufficient_permission",
-		"error_description": "Insufficient role, scope or permission",
-	}
-	return "", err.AxiomsError(errObj, 403)
+	return "", err.AxiomsError(
+		"insufficient_permission",
+		"Insufficient role, scope or permission", 
+		403,
+	)
 }
 
-func has_required_roles(viewRoles []string) {
+func hasRequiredRoles(viewRoles []string) {
 	payload := getatrr(request, "auth_jwt", nil)
 	if payload == nil {
-		errObj := map[string]string{
-			"error":             "unauthorized_access",
-			"error_description": "Invalid Authorisation Token",
-		}
-		return "", err.AxiomsError(errObj, 401)
+		return "", err.AxiomsError(
+			"unauthorized_access",
+			"Invalid Authorisation Token", 
+			401,
+		)
 	}
-	if checkRoles(tokenRoles, viewRoles[0]) {
+	if token.checkRoles(tokenRoles, viewRoles[0]) {
 		return fn(*args, **kwargs)
 	}
-	errObj := map[string]string{
-		"error":             "insufficient_permission",
-		"error_description": "Insufficient role, scope or permission",
-	}
-	return "", err.AxiomsError(errObj, 403)
+	return "", err.AxiomsError(
+		"insufficient_permission",
+		"Insufficient role, scope or permission", 
+		403,
+	)
 }
 
-func has_required_permissions(viewPermissions []string) {
+func hasRequiredPermissions(viewPermissions []string) {
 	payload := getatrr(request, "auth_jwt", nil)
 	if payload == nil {
-		errObj := map[string]string{
-			"error":             "unauthorized_access",
-			"error_description": "Invalid Authorisation Token",
-		}
-		return "", err.AxiomsError(errObj, 401)
+		return "", err.AxiomsError(
+			"unauthorized_access",
+			"Invalid Authorisation Token", 
+			401,
+		)
 	}
 	var token_permissions []string
 	token_permissions = getattr(
@@ -53,13 +57,13 @@ func has_required_permissions(viewPermissions []string) {
 		"https://{}/claims/permissions".format(app.config["AXIOMS_DOMAIN"]),
 		[]
 	)
-	if check_permissions(tokenPermissions, viewPermissions[0]):
+	if token.checkPermissions(tokenPermissions, viewPermissions[0]) {
 		return fn(*args, **kwargs)
-	errObj := map[string]string{
-		"error":             "insufficient_permission",
-		"error_description": "Insufficient role, scope or permission",
 	}
-	return "", err.AxiomsError(errObj, 403)
+	return "", err.AxiomsError(
+		"insufficient_permission",
+		"Insufficient role, scope or permission", 
+		403)
 }
 
 func has_valid_access_token() {
