@@ -8,43 +8,15 @@
 package routers
 
 import (
-	"axioms/controllers"
+	"go-axioms/controllers"
 
 	"github.com/astaxie/beego"
 )
 
 func init() {
-	// ns := beego.NewNamespace("/v1",
-	// 	beego.NSNamespace("/object",
-	// 		beego.NSInclude(
-	// 			&controllers.ObjectController{},
-	// 		),
-	// 	),
-	// 	beego.NSNamespace("/user",
-	// 		beego.NSInclude(
-	// 			&controllers.UserController{},
-	// 		),
-	// 	),
-	// )
-	perm := beego.NewNamespace("/permission",
-		beego.NSInclude(
-			&controllers.PermissionController{},
-		),
-	)
-	priv := beego.NewNamespace("/private",
-		beego.NSInclude(
-			&controllers.PrivateController{},
-		),
-	)
-	publ := beego.NewNamespace("/public",
-		beego.NSInclude(
-			&controllers.PublicController{},
-		),
-	)
-	role := beego.NewNamespace("/role",
-		beego.NSInclude(
-			&controllers.RoleController{},
-		),
-	)
-	beego.AddNamespace(perm, priv, publ, role)
+	beego.Router("/", &controllers.IndexController{})
+	beego.Router("/permission", &controllers.PermissionController{})
+	beego.Router("/private", &controllers.PrivateController{})
+	beego.Router("/public", &controllers.PublicController{})
+	beego.Router("/role", &controllers.RoleController{})
 }
