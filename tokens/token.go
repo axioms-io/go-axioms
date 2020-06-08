@@ -22,7 +22,7 @@ import (
 
 var gc gcache.Cache = gcache.New(10).Build()
 
-func hasBearerToken(reqObj http.Request) (string, error) {
+func HasBearerToken(reqObj *http.Request) (string, error) {
 	var headerName string = "Authorization"
 	var tokenPrefix string = "bearer"
 	authHeader := reqObj.Header.Get(headerName)
@@ -47,7 +47,7 @@ func hasBearerToken(reqObj http.Request) (string, error) {
 	)
 }
 
-func hasValidToken(tok string) (bool, error) {
+func HasValidToken(tok string) (bool, error) {
 	claims := make(map[string]interface{})
 	token, _ := jwt.ParseSigned(tok)
 	token.UnsafeClaimsWithoutVerification(&claims)
@@ -84,7 +84,7 @@ func getPayloadFromToken(tok string, key jose.JSONWebKey) (jwt.Claims, error) {
 	return payload, nil
 }
 
-func checkScopes(providedScopes string, requiredScopes []string) bool {
+func CheckScopes(providedScopes string, requiredScopes []string) bool {
 	if len(requiredScopes) == 0 {
 		return true
 	}
@@ -100,7 +100,7 @@ func checkScopes(providedScopes string, requiredScopes []string) bool {
 	return set.Intersection(tokenScopes, scopes).Size() > 0
 }
 
-func checkRoles(tokenRoles []string, viewRoles []string) bool {
+func CheckRoles(tokenRoles []string, viewRoles []string) bool {
 	if len(viewRoles) == 0 {
 		return true
 	}
@@ -115,7 +115,7 @@ func checkRoles(tokenRoles []string, viewRoles []string) bool {
 	return set.Intersection(token, view).Size() > 0
 }
 
-func checkPermissions(tokenPermissions []string, viewPermissions []string) bool {
+func CheckPermissions(tokenPermissions []string, viewPermissions []string) bool {
 	if len(viewPermissions) == 0 {
 		return true
 	}
