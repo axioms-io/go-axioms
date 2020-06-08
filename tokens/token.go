@@ -2,41 +2,36 @@ package tokens
 
 import (
 	// Standard Imports
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
 	"strings"
 	"time"
-	"net/http"
-	"encoding/json"
-	"io/ioutil"
-	
+
 	// SDK Imports
 	axerr "go-axioms/errors"
-	"go-axioms/conf"
 
 	// Package Imports
+	"github.com/bluele/gcache"
 	"github.com/fatih/set"
 	jose "gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
-	"github.com/eko/gocache/store"
 )
 
-memcacheStore := store.NewMemcache(
-	memcache.New("localhost"),
-	&store.Options{
-		Expiration: 300 * time.Second
-	},
-)
-cacheManager := cache.New(memcacheStore)
+var gc gcache.Cache = gcache.New(10).Build()
 
 func hasBearerToken(reqObj http.Request) (string, error) {
 	var headerName string = "Authorization"
 	var tokenPrefix string = "bearer"
 	authHeader := reqObj.Header.Get(headerName)
 	if authHeader == "" {
-		return ("", axerr.AxiomsError(
+		return "", axerr.AxiomsError(
 			"unauthorized_access",
 			"Missing Authorisation Header",
-			401
-		))
+			401,
+		)
 	}
 	// What is the structure of the header?
 	split := strings.Split(authHeader, " ")
@@ -45,44 +40,45 @@ func hasBearerToken(reqObj http.Request) (string, error) {
 	if strings.ToLower(bearer) == tokenPrefix && token != "" {
 		return token, nil
 	}
-	return ("", axerr.AxiomsError(
+	return "", axerr.AxiomsError(
 		"unauthorized_access",
-		"Invalid Authorisation Bearer", 
-		401
-	))
+		"Invalid Authorisation Bearer",
+		401,
+	)
 }
 
-func hasValidToken(token jwt.JSONWebToken) (bool, error) {
+func hasValidToken(tok string) (bool, error) {
 	claims := make(map[string]interface{})
-	err := jwt.UnsafeClaimsWithoutVerification(&claims)
-	key, err := getKeyFromJWKSjson(conf.App.Domain, claims["kid"])
-	payload, valid := checkTokenValidity(token, key)
-	if valid && payload.Audience.Contains(conf.App.Audience) {
-		return (true, nil)
+	token, _ := jwt.ParseSigned(tok)
+	token.UnsafeClaimsWithoutVerification(&claims)
+	key, _ := getKeyFromJWKSjson(os.Getenv("AXIOMS_DOMAIN"), fmt.Sprintf("%v", claims["kid"]))
+	payload, valid := checkTokenValidity(tok, key)
+	if valid && payload.Audience.Contains(os.Getenv("AXIOMS_AUDIENCE")) {
+		return true, nil
 	}
-	return (false, axerr.AxiomsError(
+	return false, axerr.AxiomsError(
 		"unauthorized_access",
 		"Invalid Access Token",
-		401
-	))
+		401,
+	)
 }
 
-func checkTokenValidity(token string, key jose.JSONWebKey) (jwt.Claims, bool) {
-	payload, err := getPayloadFromToken(token, key)
+func checkTokenValidity(tok string, key jose.JSONWebKey) (jwt.Claims, bool) {
+	payload, _ := getPayloadFromToken(tok, key)
 	now := time.Now().Unix()
-	if payload == "" && now <= payload.Expiry {
-		return (payload, true)
+	if now <= payload.Expiry.Time().Unix() {
+		return payload, true
 	}
-	return (payload, false)
+	return payload, false
 }
 
-func getPayloadFromToken(token string, key jose.JSONWebKey) (jwt.Claims, error) {
-	tok, err := jwt.ParseSigned(token)
+func getPayloadFromToken(tok string, key jose.JSONWebKey) (jwt.Claims, error) {
+	token, err := jwt.ParseSigned(tok)
 	if err != nil {
-		return "", err
+		return jwt.Claims{}, err
 	}
 	payload := jwt.Claims{}
-	if err := tok.Claims(key, &payload); err != nil {
+	if err := token.Claims(key, &payload); err != nil {
 		panic(err)
 	}
 	return payload, nil
@@ -94,11 +90,11 @@ func checkScopes(providedScopes string, requiredScopes []string) bool {
 	}
 	var tmp []string = strings.Split(providedScopes, " ")
 	var tokenScopes = set.New(set.ThreadSafe)
-	for i, s := range tmp {
+	for _, s := range tmp {
 		tokenScopes.Add(s)
 	}
 	scopes := set.New(set.ThreadSafe)
-	for i, s := range requiredScopes {
+	for _, s := range requiredScopes {
 		scopes.Add(s)
 	}
 	return set.Intersection(tokenScopes, scopes).Size() > 0
@@ -109,11 +105,11 @@ func checkRoles(tokenRoles []string, viewRoles []string) bool {
 		return true
 	}
 	token := set.New(set.ThreadSafe)
-	for i, s := range tokenRoles {
+	for _, s := range tokenRoles {
 		token.Add(s)
 	}
 	view := set.New(set.ThreadSafe)
-	for i, s := range viewRoles {
+	for _, s := range viewRoles {
 		view.Add(s)
 	}
 	return set.Intersection(token, view).Size() > 0
@@ -124,40 +120,40 @@ func checkPermissions(tokenPermissions []string, viewPermissions []string) bool 
 		return true
 	}
 	token := set.New(set.ThreadSafe)
-	for i, s := range tokenPermissions {
+	for _, s := range tokenPermissions {
 		token.Add(s)
 	}
 	view := set.New(set.ThreadSafe)
-	for i, s := range viewPermissions {
+	for _, s := range viewPermissions {
 		view.Add(s)
 	}
 	return set.Intersection(token, view).Size() > 0
 }
 
-func getKeyFromJWKSjson(tenant string, kid string) (jose.JSONWebKeySet, err) {
-	data = cacheFetch("https://" + tenant + "/oauth2/.well-known/jwks.json", 600)
-	key = &jose.JSONWebKeySet{
+func getKeyFromJWKSjson(tenant string, kid string) (jose.JSONWebKey, error) {
+	data := cacheFetch("https://"+tenant+"/oauth2/.well-known/jwks.json", 600)
+	key := &jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{},
 	}
-	err := json.Unmarshal([]byte(data), key)
+	err := json.Unmarshal([]byte(fmt.Sprintf("%v", data)), key)
 	if err != nil {
-		return key, axerr.AxiomsError(
+		return key.Key(kid)[0], axerr.AxiomsError(
 			"unathorized_access",
 			"Invalid Access Token",
-			401
+			401,
 		)
 	}
-	return key, nil
+	return key.Key(kid)[0], nil
 }
 
-func cacheFetch(url string, timeOfLife int) {
-	cached, err = cacheManager.Get("jwks" + url)
+func cacheFetch(url string, timeOfLife int) interface{} {
+	cached, err := gc.Get("jwks" + url)
 	if err != nil {
 		return cached
 	}
 	response, err := http.Get(url)
 	data, err := ioutil.ReadAll(response.Body)
 	defer response.Body.Close()
-	err := cacheManager.Set("jwks" + url, data, &cache.Options{Expiration: timeOfLife*time.Second})
+	gc.SetWithExpire("jwks"+url, data, time.Second*300)
 	return data
 }
