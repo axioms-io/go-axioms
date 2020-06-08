@@ -3,6 +3,8 @@ package main
 import (
 	_ "go-axioms/routers"
 
+	_ "github.com/joho/godotenv/autoload"
+
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/plugins/cors"
 )
