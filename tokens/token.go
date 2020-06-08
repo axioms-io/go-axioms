@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	// SDK Imports
+	"go-axioms/conf"
 	axerr "go-axioms/errors"
 
 	// Package Imports
@@ -51,9 +51,9 @@ func hasValidToken(tok string) (bool, error) {
 	claims := make(map[string]interface{})
 	token, _ := jwt.ParseSigned(tok)
 	token.UnsafeClaimsWithoutVerification(&claims)
-	key, _ := getKeyFromJWKSjson(os.Getenv("AXIOMS_DOMAIN"), fmt.Sprintf("%v", claims["kid"]))
+	key, _ := getKeyFromJWKSjson(conf.App.Domain, fmt.Sprintf("%v", claims["kid"]))
 	payload, valid := checkTokenValidity(tok, key)
-	if valid && payload.Audience.Contains(os.Getenv("AXIOMS_AUDIENCE")) {
+	if valid && payload.Audience.Contains(conf.App.Domain) {
 		return true, nil
 	}
 	return false, axerr.AxiomsError(
