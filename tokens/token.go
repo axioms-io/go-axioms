@@ -47,20 +47,16 @@ func HasBearerToken(reqObj *http.Request) (string, error) {
 	)
 }
 
-func HasValidToken(tok string) (bool, error) {
+func HasValidToken(tok string) bool {
 	claims := make(map[string]interface{})
 	token, _ := jwt.ParseSigned(tok)
 	token.UnsafeClaimsWithoutVerification(&claims)
 	key, _ := getKeyFromJWKSjson(conf.App.Domain, fmt.Sprintf("%v", claims["kid"]))
 	payload, valid := checkTokenValidity(tok, key)
 	if valid && payload.Audience.Contains(conf.App.Domain) {
-		return true, nil
+		return true
 	}
-	return false, axerr.AxiomsError(
-		"unauthorized_access",
-		"Invalid Access Token",
-		401,
-	)
+	return false
 }
 
 func checkTokenValidity(tok string, key jose.JSONWebKey) (jwt.Claims, bool) {
