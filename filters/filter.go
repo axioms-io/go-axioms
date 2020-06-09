@@ -5,9 +5,7 @@ import (
 	"go-axioms/conf"
 	"go-axioms/tokens"
 	"log"
-	"os"
-
-	"go-axioms/errors"
+	"net/http"
 
 	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/context"
@@ -17,44 +15,32 @@ import (
 // HasRequiredScopes checks scopes
 func HasRequiredScopes(viewRoles []string) beego.FilterFunc {
 	return func(ctx *context.Context) {
-		payload := ctx.Request.auth_jwt
-		if payload == nil {
-			return "", err.AxiomsError(
-				"unauthorized_access",
-				"Invalid Authorisation Token",
-				401,
-			)
+		payload, err := reflections.GetField(ctx.Request, "auth_jwt")
+		if err != nil {
+			ctx.Redirect(http.StatusUnauthorized, "/401/Invalid_Authorization_Token'")
 		}
 		if tokens.CheckScopes(payload.scope, required_scopes[0]) {
 			return
 		}
-		return "", err.AxiomsError(
-			"insufficient_permission",
-			"Insufficient role, scope or permission",
-			403,
-		)
+		ctx.Redirect(http.StatusUnauthorized, "/403")
 	}
 }
 
 // HasRequiredRoles checks roles
 func HasRequiredRoles(viewRoles []string) beego.FilterFunc {
 	return func(ctx *context.Context) {
-		payload := ctx.Request.auth_jwt
-		if payload == nil {
-			return "", err.AxiomsError(
-				"unauthorized_access",
-				"Invalid Authorisation Token",
-				401,
-			)
+		payload, err := reflections.GetField(ctx.Request, "auth_jwt")
+		if err != nil {
+			ctx.Redirect(http.StatusUnauthorized, "/401/Invalid_Authorization_Token'")
 		}
+		tokenRoles, err := reflections.GetField(
+			payload,
+			fmt.Sprintf("https://%s/claims/roles", conf.App.Domain),
+		)
 		if tokens.CheckRoles(tokenRoles, viewRoles[0]) {
 			return
 		}
-		return "", err.AxiomsError(
-			"insufficient_permission",
-			"Insufficient role, scope or permission",
-			403,
-		)
+		ctx.Redirect(http.StatusUnauthorized, "/403")
 	}
 }
 
@@ -63,22 +49,16 @@ func HasRequiredPermissions(viewPermissions []string) beego.FilterFunc {
 	return func(ctx *context.Context) {
 		payload, err := reflections.GetField(ctx.Request, "auth_jwt")
 		if err != nil {
-			return "", err.AxiomsError(
-				"unauthorized_access",
-				"Invalid Authorisation Token",
-				401,
-			)
+			ctx.Redirect(http.StatusUnauthorized, "/401/Invalid_Authorization_Token'")
 		}
-		token_permissions, err = reflections.GetField(
+		tokenPermissions, err := reflections.GetField(
 			payload,
-			fmt.Sprintf("https://%s/claims/permissions", os.Getenv("AXIOMS_DOMAIN")))
+			fmt.Sprintf("https://%s/claims/permissions", conf.App.Domain),
+		)
 		if tokens.CheckPermissions(tokenPermissions, viewPermissions[0]) {
 			return
 		}
-		return "", err.AxiomsError(
-			"insufficient_permission",
-			"Insufficient role, scope or permission",
-			403)
+		ctx.Redirect(http.StatusUnauthorized, "/403")
 	}
 }
 
@@ -92,10 +72,6 @@ func HasValidAccessToken() beego.FilterFunc {
 		if err != nil && tokens.HasValidToken(token) {
 			return
 		}
-		return "", errors.AxiomsError(
-			"unauthorized_access",
-			"Invalid Authorization Token",
-			401,
-		)
+		ctx.Redirect(http.StatusUnauthorized, "/401/Invalid_Authorization_Token'")
 	}
 }
