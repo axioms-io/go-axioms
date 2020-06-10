@@ -8,43 +8,43 @@
 package routers
 
 import (
-	"axioms/controllers"
+	"go-axioms/controllers"
+	axerr "go-axioms/errors"
+	"go-axioms/filters"
 
 	"github.com/astaxie/beego"
 )
 
+// func methodSwitcher(in string) {
+// 	switch method := in; method {
+// 	case "GET":
+// 		perm := []string{"sample:read"}
+// 		return filters.HasRequiredPermissions(perm)
+// 	case "POST":
+// 		perm := []string{"sample:create"}
+// 		return filters.HasRequiredPermissions(perm)
+// 	case "PUT":
+// 		perm := []string{"sample:update"}
+// 		return filters.HasRequiredPermissions(perm)
+// 	default:
+// 		perm := []string{"sample:unknown"}
+// 		return filters.HasRequiredPermissions(perm)
+// 	}
+// }
+
 func init() {
-	// ns := beego.NewNamespace("/v1",
-	// 	beego.NSNamespace("/object",
-	// 		beego.NSInclude(
-	// 			&controllers.ObjectController{},
-	// 		),
-	// 	),
-	// 	beego.NSNamespace("/user",
-	// 		beego.NSInclude(
-	// 			&controllers.UserController{},
-	// 		),
-	// 	),
-	// )
-	perm := beego.NewNamespace("/permission",
-		beego.NSInclude(
-			&controllers.PermissionController{},
-		),
+	beego.Router("/", &controllers.IndexController{})
+	beego.Router("/permission", &controllers.PermissionController{})
+	beego.InsertFilter(
+		"/permission",
+		beego.BeforeExec,
+		filters.HasRequiredPermissions([]string{"sample:read"}),
 	)
-	priv := beego.NewNamespace("/private",
-		beego.NSInclude(
-			&controllers.PrivateController{},
-		),
-	)
-	publ := beego.NewNamespace("/public",
-		beego.NSInclude(
-			&controllers.PublicController{},
-		),
-	)
-	role := beego.NewNamespace("/role",
-		beego.NSInclude(
-			&controllers.RoleController{},
-		),
-	)
-	beego.AddNamespace(perm, priv, publ, role)
+
+	beego.Router("/private", &controllers.PrivateController{})
+	beego.Router("/public", &controllers.PublicController{})
+	beego.Router("/role", &controllers.RoleController{})
+
+	beego.Router("/401/:all", &axerr.ErrorController{}, "GET:Error401")
+	beego.Router("/403", &axerr.ErrorController{}, "GET:Error403")
 }
