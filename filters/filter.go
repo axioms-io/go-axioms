@@ -13,13 +13,13 @@ import (
 )
 
 // HasRequiredScopes checks scopes
-func HasRequiredScopes(viewRoles []string) beego.FilterFunc {
+func HasRequiredScopes(viewScopes []string) beego.FilterFunc {
 	return func(ctx *context.Context) {
 		payload, err := reflections.GetField(ctx.Request, "auth_jwt")
 		if err != nil {
 			ctx.Redirect(http.StatusUnauthorized, "/401/Invalid_Authorization_Token'")
 		}
-		if tokens.CheckScopes(payload.scope, required_scopes[0]) {
+		if tokens.CheckScopes(payload.scope, viewScopes) {
 			return
 		}
 		ctx.Redirect(http.StatusUnauthorized, "/403")
@@ -37,25 +37,26 @@ func HasRequiredRoles(viewRoles []string) beego.FilterFunc {
 			payload,
 			fmt.Sprintf("https://%s/claims/roles", conf.App.Domain),
 		)
-		if tokens.CheckRoles(tokenRoles, viewRoles[0]) {
+		if tokens.CheckRoles(tokenRoles, viewRoles) {
 			return
 		}
-		ctx.Redirect(http.StatusUnauthorized, "/403")
+		ctx.Redirect(http.StatusForbidden, "/403")
 	}
 }
 
 // HasRequiredPermissions checks permissions
-func HasRequiredPermissions(viewPermissions []string) beego.FilterFunc {
+func HasRequiredPermissions(viewPermissions map[string][]string) beego.FilterFunc {
 	return func(ctx *context.Context) {
 		payload, err := reflections.GetField(ctx.Request, "auth_jwt")
 		if err != nil {
 			ctx.Redirect(http.StatusUnauthorized, "/401/Invalid_Authorization_Token'")
 		}
-		tokenPermissions, err := reflections.GetField(
+		val, err := reflections.GetField(
 			payload,
 			fmt.Sprintf("https://%s/claims/permissions", conf.App.Domain),
 		)
-		if tokens.CheckPermissions(tokenPermissions, viewPermissions[0]) {
+		tokenPermissions := fmt.Sprintf("%v", val)
+		if tokens.CheckPermissions(tokenPermissions, viewPermissions[ctx.Request.Method]) {
 			return
 		}
 		ctx.Redirect(http.StatusUnauthorized, "/403")
@@ -72,6 +73,6 @@ func HasValidAccessToken() beego.FilterFunc {
 		if err != nil && tokens.HasValidToken(token) {
 			return
 		}
-		ctx.Redirect(http.StatusUnauthorized, "/401/Invalid_Authorization_Token'")
+		ctx.Redirect(http.StatusUnauthorized, "/401/"+err.Error())
 	}
 }

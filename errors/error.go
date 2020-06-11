@@ -1,6 +1,10 @@
 package errors
 
-import "github.com/astaxie/beego"
+import (
+	"net/http"
+
+	"github.com/astaxie/beego"
+)
 
 // ErrorController namespace controller
 type ErrorController struct {
@@ -10,22 +14,22 @@ type ErrorController struct {
 // Error401 handler
 func (e *ErrorController) Error401() {
 	var description string = e.Ctx.Input.Param(":all")
-	e.Ctx.ResponseWriter.WriteHeader(401)
+	e.Ctx.ResponseWriter.WriteHeader(http.StatusUnauthorized)
 	e.Data["json"] = AxiomsError(
 		"unauthorized_access",
 		description,
-		401,
+		http.StatusUnauthorized,
 	)
 	e.ServeJSON()
 }
 
 // Error403 handler
 func (e *ErrorController) Error403() {
-	e.Ctx.ResponseWriter.WriteHeader(403)
+	e.Ctx.ResponseWriter.WriteHeader(http.StatusForbidden)
 	e.Data["json"] = AxiomsError(
 		"insufficient_permission",
 		"Insufficient role, scope or permission",
-		403,
+		http.StatusForbidden,
 	)
 	e.ServeJSON()
 }
@@ -57,5 +61,5 @@ type errorResponse struct {
 }
 
 func (e *errorResponse) Error() string {
-	return e.Name["error"]
+	return e.Name["error_description"]
 }
