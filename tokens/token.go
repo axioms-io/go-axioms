@@ -29,7 +29,7 @@ func HasBearerToken(reqObj *http.Request) (string, error) {
 	if authHeader == "" {
 		return "", axerr.AxiomsError(
 			"unauthorized_access",
-			"Missing Authorisation Header",
+			"Missing_Authorisation_Header",
 			401,
 		)
 	}
@@ -42,7 +42,7 @@ func HasBearerToken(reqObj *http.Request) (string, error) {
 	}
 	return "", axerr.AxiomsError(
 		"unauthorized_access",
-		"Invalid Authorisation Bearer",
+		"Invalid_Authorisation_Bearer",
 		401,
 	)
 }
@@ -135,7 +135,7 @@ func getKeyFromJWKSjson(tenant string, kid string) (jose.JSONWebKey, error) {
 	if err != nil {
 		return key.Key(kid)[0], axerr.AxiomsError(
 			"unathorized_access",
-			"Invalid Access Token",
+			"Invalid_Access_Token",
 			401,
 		)
 	}
